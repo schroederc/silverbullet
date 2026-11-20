@@ -552,6 +552,11 @@ $comment-border: 1px;
     display: block;
   }
 
+  .sb-page-lua-error {
+    font-size: 0.9em;
+    padding: 0.2em 0;
+  }
+
   .sb-loading-widget {
     display: inline-flex;
     align-items: center;

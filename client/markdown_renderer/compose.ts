@@ -263,18 +263,6 @@ export async function evalAssignment(
   return assignmentRenderValue(await pageScopeOf(ctx), name);
 }
 
-/** A `${local name = expr}` shows nothing, unless it failed. */
-async function evalLocalAssignment(
-  name: string,
-  ctx: RenderContext,
-): Promise<unknown> {
-  const scope = await pageScopeOf(ctx);
-  const result = scope?.assignments.get(name);
-  return result && !("error" in result)
-    ? ""
-    : assignmentRenderValue(scope, name);
-}
-
 /** Evaluates a `${…}` body: an assignment yields its value in the page scope. */
 export function evalDirectiveText(
   exprText: string,
@@ -325,24 +313,19 @@ export async function expandToSlots(
         const id = slots.length;
         slots.push(undefined);
         const child = { ...ctx, sourcePage };
-        const { assignmentName, local } = directive;
+        const { assignmentName } = directive;
         const expr = inTableCell
           ? unescapeTableCellPipes(directive.expr)
           : directive.expr;
         pending.push(
           (assignmentName
-            ? (local ? evalLocalAssignment : evalAssignment)(
-                assignmentName,
-                child,
-              )
+            ? evalAssignment(assignmentName, child)
             : evalDirective(expr, child)
           ).then((value) => {
             slots[id] = value;
           }),
         );
-        return assignmentName && !local
-          ? pageVarNode(assignmentName, id)
-          : slotNode(id);
+        return assignmentName ? pageVarNode(assignmentName, id) : slotNode(id);
       },
     },
     ctx.visited,

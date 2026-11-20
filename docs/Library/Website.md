@@ -205,6 +205,7 @@ docsNav.sections = {
     },
     { ref = "Reference/Space Lua and APIs", label = "Space Lua and APIs",
       { ref = "Space Lua",
+        { ref = "Space Lua/Page Lua" },
         { ref = "Space Lua/Standard Library" },
         { ref = "Space Lua/Conventions" },
         { ref = "Space Lua/Quirks" },

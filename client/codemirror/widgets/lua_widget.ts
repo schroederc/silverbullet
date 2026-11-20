@@ -107,33 +107,10 @@ export function labelPageVar(
   return el;
 }
 
-/** A `${local …}`: its name tag and the formula behind it, not its value. */
-export function hiddenPageVar(label: string, formula: string): HTMLElement {
-  const el = document.createElement("span");
-  el.className = "sb-page-var sb-page-var-hidden";
-  const tag = document.createElement("span");
-  tag.className = "sb-page-var-tag";
-  tag.textContent = label;
-  const shown = formula.replace(/\s+/g, " ").trim();
-  const f = document.createElement("span");
-  f.className = "sb-page-var-formula";
-  f.textContent = `= ${shown}`;
-  f.title = shown;
-  el.append(tag, f);
-  return el;
-}
-
 /** Where a widget sits decides what its ⋯ menu can do. */
 export type WidgetHost =
-  // `label`: an assignment directive's name, shown as a tag before the value;
-  // `formula`: a `${local …}`'s expression, shown instead of its value unless
-  // it fails
-  | {
-      kind: "directive";
-      wrappers: InlineWrapper[];
-      label?: string;
-      formula?: string;
-    }
+  // `label`: an assignment directive's name, shown as a tag before the value
+  | { kind: "directive"; wrappers: InlineWrapper[]; label?: string }
   | { kind: "code"; codeText: string }
   | { kind: "transclusion"; codeText: string; openRef: Ref | null }
   // A tag-rendered object (frontmatter, data block): Edit source goes to its
@@ -423,11 +400,10 @@ export class LuaWidget extends WidgetType {
       : startedAt;
     activeWidgets.add(this);
     const luaError = isLuaWidgetError(value);
-    const hideValue = this.hidesValue(luaError);
     // Stable marker for failed renders (the visible text stays as is).
     div.classList.toggle("sb-lua-error", luaError);
     if (value === null || value === undefined) {
-      if (!this.renderEmpty && !hideValue) {
+      if (!this.renderEmpty) {
         // A page it read may still define the value it's missing
         const missed = this.live.bind([...triggers], computedAt);
         this.clear(div);
@@ -469,7 +445,7 @@ export class LuaWidget extends WidgetType {
       if (rendered.chrome.cssClasses) {
         div.className = rendered.chrome.cssClasses.join(" ");
       }
-      if (rendered.empty && rendered.fromWidget && !hideValue) {
+      if (rendered.empty && rendered.fromWidget) {
         this.clear(div);
       } else {
         this.commit(div, version, value, luaError, rendered);
@@ -477,11 +453,6 @@ export class LuaWidget extends WidgetType {
       }
     }
     if (revalidate) this.live.trigger();
-  }
-
-  private hidesValue(luaError: boolean): boolean {
-    const host = this.opts.host;
-    return host.kind === "directive" && host.formula !== undefined && !luaError;
   }
 
   private commit(
@@ -493,8 +464,7 @@ export class LuaWidget extends WidgetType {
   ): void {
     const client = this.opts.client;
     this.scope.dispose();
-    const hideValue = this.hidesValue(luaError);
-    const block = rendered.block && !hideValue;
+    const block = rendered.block;
     // Reloads render into the same div, so replace the kind class rather than append
     div.classList.remove("sb-lua-directive-block", "sb-lua-directive-inline");
     div.classList.add(
@@ -514,13 +484,10 @@ export class LuaWidget extends WidgetType {
     if (host.kind === "transclusion" && host.openRef) {
       div.dataset.sbSource = encodeRef(host.openRef);
     }
-    if (hideValue) disposeRendered(rendered.node);
     const valueNode =
-      host.kind !== "directive" || !host.label
-        ? rendered.node
-        : hideValue
-          ? hiddenPageVar(host.label, host.formula!)
-          : labelPageVar(rendered.node, host.label, block);
+      host.kind === "directive" && host.label
+        ? labelPageVar(rendered.node, host.label, block)
+        : rendered.node;
     disposeRendered(div);
     div.replaceChildren(this.wrap(block, valueNode, shown));
     this.registerMenu(div, block, shown);
